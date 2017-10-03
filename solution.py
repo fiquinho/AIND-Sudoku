@@ -3,16 +3,16 @@ ROWS = 'ABCDEFGHI'
 COLS = '123456789'
 
 
-def cross(A, B):
+def cross(a, b):
     """
     Returns the list formed by all the possible concatenations of
-    a letter a in string A with a letter b in string B.
-    :param A: String
-    :param B: String
+    a letter A in string a with a letter B in string b.
+    :param a: String
+    :param b: String
     :return: List with all possible concatenations
     """
 
-    crossed = [a + b for a in A for b in B]
+    crossed = [A + B for A in a for B in b]
     return crossed
 
 
@@ -21,9 +21,21 @@ BOARD = cross(ROWS, COLS)
 ROW_UNITS = [cross(r, COLS) for r in ROWS]
 COLUMN_UNITS = [cross(ROWS, c) for c in COLS]
 SQUARE_UNITS = [cross(rs, cs) for rs in ('ABC', 'DEF', 'GHI') for cs in ('123', '456', '789')]
-UNIT_LIST = ROW_UNITS + COLUMN_UNITS + SQUARE_UNITS
+
+diagonal_1 = []
+diagonal_2 = []
+reversed_cols = COLS[::-1]
+for i in range(len(ROWS)):
+    diagonal_1.append(ROWS[i] + COLS[i])
+    diagonal_2.append(ROWS[i] + reversed_cols[i])
+
+DIAGONAL_UNITS = [diagonal_1, diagonal_2]
+
+UNIT_LIST = ROW_UNITS + COLUMN_UNITS + SQUARE_UNITS + DIAGONAL_UNITS
 UNITS = dict((s, [u for u in UNIT_LIST if s in u]) for s in BOARD)
-PEERS = dict((s, set(sum(UNITS[s], [])) - set([s])) for s in BOARD)
+PEERS = dict((s, set(sum(UNITS[s], [])) - {s}) for s in BOARD)
+
+
 
 
 def assign_value(values, box, value):
@@ -54,6 +66,31 @@ def naked_twins(values):
     # Find all instances of naked twins
     # Eliminate the naked twins as possibilities for their peers
 
+    # Check every unit for naked twins
+    for unit in UNIT_LIST:
+        twins = []
+        # All boxes in the unit
+        unit_set = set(unit)
+
+        # Check every box in the unit to see if it has a twin
+        for box in unit:
+            # Remove the actual box so it can compare to the rest
+            unit_set.remove(box)
+
+            if len(values[box]) == 2:
+                for possible_twin in unit_set:
+                    if values[box] == values[possible_twin]:
+                        twins.append((box, possible_twin))
+
+        if len(twins) != 0:
+            for twin in twins:
+                for box in unit:
+                    if box != twin[0] and box != twin[1]:
+                        for number in values[twin[0]]:
+                            assign_value(values, box, values[box].replace(number, ""))
+
+    return values
+
 
 def grid_values(grid):
     """
@@ -72,8 +109,10 @@ def grid_values(grid):
     for i in range(len(grid)):
         if grid[i] == '.':
             result[BOARD[i]] = empty
+            #assign_value(result, BOARD[i], empty)
         else:
             result[BOARD[i]] = grid[i]
+            #assign_value(result, BOARD[i], grid[i])
 
     return result
 
@@ -87,10 +126,8 @@ def display(values):
     width = 1 + max(len(values[s]) for s in BOARD)
     line = '+'.join(['-' * (width * 3)] * 3)
     for r in ROWS:
-        print(''.join(values[r + c].center(width) + ('|' if c in '36' else '')
-                      for c in COLS))
-        if r in 'CF':
-            print(line)
+        print(''.join(values[r + c].center(width) + ('|' if c in '36' else '') for c in COLS))
+        if r in 'CF': print(line)
     return
 
 
@@ -110,7 +147,8 @@ def eliminate(values):
 
         if len(values[pos]) == 1:
             for peer in PEERS[pos]:
-                values[peer] = values[peer].replace(values[pos], "")
+                # values[peer] = values[peer].replace(values[pos], "")
+                assign_value(values, peer, values[peer].replace(values[pos], ""))
 
     return values
 
@@ -129,7 +167,8 @@ def only_choice(values):
         for digit in '123456789':
             dplaces = [box for box in unit if digit in values[box]]
             if len(dplaces) == 1:
-                values[dplaces[0]] = digit
+                # values[dplaces[0]] = digit
+                assign_value(values, dplaces[0], digit)
 
     return values
 
@@ -140,10 +179,13 @@ def reduce_puzzle(values):
         # Check how many boxes have a determined value
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
 
-        # Your code here: Use the Eliminate Strategy
+        # Use the Eliminate Strategy
         values = eliminate(values)
-        # Your code here: Use the Only Choice Strategy
+        # Use the Only Choice Strategy
         values = only_choice(values)
+        # Use the naked twins strategy
+        values = naked_twins(values)
+
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
         # If no new values were added, stop the loop.
@@ -182,6 +224,13 @@ def solve(grid):
     Returns:
         The dictionary representation of the final sudoku grid. False if no solution exists.
     """
+    values = grid_values(grid)
+
+    result = search(values)
+
+    return result
+
+
 
 if __name__ == '__main__':
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
