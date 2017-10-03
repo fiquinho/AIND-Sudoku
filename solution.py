@@ -36,8 +36,6 @@ UNITS = dict((s, [u for u in UNIT_LIST if s in u]) for s in BOARD)
 PEERS = dict((s, set(sum(UNITS[s], [])) - {s}) for s in BOARD)
 
 
-
-
 def assign_value(values, box, value):
     """
     Please use this function to update your values dictionary!
@@ -63,13 +61,11 @@ def naked_twins(values):
         the values dictionary with the naked twins eliminated from peers.
     """
 
-    # Find all instances of naked twins
-    # Eliminate the naked twins as possibilities for their peers
-
     # Check every unit for naked twins
     for unit in UNIT_LIST:
+        # Empty list to hold the naked twins of this unit
         twins = []
-        # All boxes in the unit
+        # Set created to keep track of witch box I have already checked
         unit_set = set(unit)
 
         # Check every box in the unit to see if it has a twin
@@ -77,13 +73,19 @@ def naked_twins(values):
             # Remove the actual box so it can compare to the rest
             unit_set.remove(box)
 
+            # It only keeps going if the box can be a naked twin
             if len(values[box]) == 2:
+                # Compare the actual box with all the remaining boxes
                 for possible_twin in unit_set:
+                    # If the two boxes are naked twins..
                     if values[box] == values[possible_twin]:
+                        # .. append a tuple with the name of the boxes
                         twins.append((box, possible_twin))
 
+        # If we found any naked twins
         if len(twins) != 0:
             for twin in twins:
+                # Check every box in the unit. If the box isn't one of the naked twins, remove the values of the naked twins from it
                 for box in unit:
                     if box != twin[0] and box != twin[1]:
                         for number in values[twin[0]]:
@@ -102,8 +104,8 @@ def grid_values(grid):
             Keys: The boxes, e.g., 'A1'
             Values: The value in each box, e.g., '8'. If the box has no value, then the value will be '123456789'.
     """
+    
     empty = '123456789'
-
     result = {}
 
     for i in range(len(grid)):
